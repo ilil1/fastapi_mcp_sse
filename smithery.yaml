@@ -2,9 +2,20 @@ version: 1
 
 startCommand:
   type: http
-  configSchema: {}
-  exampleConfig: {}
+
+configSchema:
+  type: object
+  properties:
+    endpoint:
+      type: string
+      title: "MCP SSE Endpoint"
+      description: "Specify which route this MCP will serve from"
+      default: "/mcp"
+  required:
+    - endpoint
+
+exampleConfig:
+  endpoint: "/mcp"
 
 build:
   dockerfile: Dockerfile
-
