@@ -1,7 +1,1 @@
-version: 1
-name: fastapi-mcp-sse
-language: python
-server:
-  type: http
-  url: https://fastapi-mcp-sse.onrender.com/sse
 
