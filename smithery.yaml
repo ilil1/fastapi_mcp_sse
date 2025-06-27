@@ -1,0 +1,9 @@
+version: 1
+name: fastapi-mcp-sse
+language: python
+python_version: "3.13"
+
+# HTTP 서버이므로 entrypoint나 stdio는 필요 없음
+server:
+  type: http
+  url: https://fastapi-mcp-sse.onrender.com/sse
