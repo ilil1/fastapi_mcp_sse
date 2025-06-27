@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from mcp.server.sse import SseServerTransport
 from starlette.routing import Mount
-from weather import mcp
+from logispot_mcp import mcp
 
 # Create FastAPI application with metadata
 app = FastAPI(
