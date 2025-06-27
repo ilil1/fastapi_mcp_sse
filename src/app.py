@@ -3,55 +3,61 @@ from mcp.server.sse import SseServerTransport
 from starlette.routing import Mount
 from logispot_mcp import mcp
 
-# Create FastAPI application with metadata
+# FastAPI 앱 생성
 app = FastAPI(
     title="FastAPI MCP SSE",
-    description="A demonstration of Server-Sent Events with Model Context "
-    "Protocol integration",
+    description="A demonstration of Server-Sent Events with Model Context Protocol integration",
     version="0.1.0",
 )
 
-# Create SSE transport instance for handling server-sent events
+# SSE 메시지 핸들링용 Transport 인스턴스
 sse = SseServerTransport("/messages/")
 
-# Mount the /messages path to handle SSE message posting
+# /messages 엔드포인트를 Mount (실제 메시지 POST는 내부적으로 처리됨)
 app.router.routes.append(Mount("/messages", app=sse.handle_post_message))
 
-
-# Add documentation for the /messages endpoint
+# /messages 문서용 dummy route
 @app.get("/messages", tags=["MCP"], include_in_schema=True)
 def messages_docs():
     """
-    Messages endpoint for SSE communication
+    Messages endpoint for SSE communication.
 
     This endpoint is used for posting messages to SSE clients.
     Note: This route is for documentation purposes only.
     The actual implementation is handled by the SSE transport.
     """
-    pass  # This is just for documentation, the actual handler is mounted above
+    pass
 
-
-@app.get("/sse", tags=["MCP"])
-async def handle_sse(request: Request):
+# 공통 SSE 핸들러 함수 정의
+async def handle_mcp_stream(request: Request):
     """
-    SSE endpoint that connects to the MCP server
-
-    This endpoint establishes a Server-Sent Events connection with the client
-    and forwards communication to the Model Context Protocol server.
+    SSE connection handler that bridges FastAPI with the MCP server.
     """
-    # Use sse.connect_sse to establish an SSE connection with the MCP server
     async with sse.connect_sse(request.scope, request.receive, request._send) as (
         read_stream,
         write_stream,
     ):
-        # Run the MCP server with the established streams
         await mcp._mcp_server.run(
             read_stream,
             write_stream,
             mcp._mcp_server.create_initialization_options(),
         )
 
+# /sse 엔드포인트 (예: 브라우저 테스트용)
+@app.get("/sse", tags=["MCP"])
+async def dev_sse(request: Request):
+    """
+    Development SSE Endpoint (for direct browser testing).
+    """
+    return await handle_mcp_stream(request)
 
-# Import routes at the end to avoid circular imports
-# This ensures all routes are registered to the app
+# /mcp 엔드포인트 (예: AI용 공식 MCP 통신)
+@app.get("/mcp", tags=["MCP"])
+async def production_mcp(request: Request):
+    """
+    Production MCP Endpoint (for AI model use).
+    """
+    return await handle_mcp_stream(request)
+
+# 기타 라우트 불러오기 (circular import 방지)
 import routes  # noqa
