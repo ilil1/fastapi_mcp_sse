@@ -49,9 +49,9 @@ app.include_router(router)
 mcp_server = FastApiMCP(app)
 
 # (선택) 초기화 옵션 커스터마이즈
-init_opts = mcp_server.create_initialization_options()
-init_opts.system_prompt = "당신은 Logispot 전문 AI 비서입니다. 모든 답변은 한국어로 작성하세요."
-mcp_server.set_initialization_options(init_opts)
+init_opts = mcp_server._mcp_server.create_initialization_options()
+init_opts.system_prompt = "모든 응답은 한국어로, 톤은 차분·친절하게."
+mcp_server._mcp_server.initialization_options = init_opts
 
 # 마운트 후 자동으로 /mcp/sse, /mcp/messages/* 경로가 준비됨
 mcp_server.mount("/mcp")
