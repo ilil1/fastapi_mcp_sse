@@ -2,6 +2,8 @@ from fastapi import FastAPI, Request
 from mcp.server.sse import SseServerTransport
 from starlette.routing import Mount
 from logispot_mcp import mcp
+from fastapi import FastAPI, Request, Query
+from fastapi.responses import JSONResponse
 
 # FastAPI 앱 생성
 app = FastAPI(
@@ -43,6 +45,24 @@ async def handle_mcp_stream(request: Request):
             mcp._mcp_server.create_initialization_options(),
         )
 
+async def handle_mcp_stream_smithery(request: Request, endpoint: str):
+    """
+    SSE connection handler that bridges FastAPI with the MCP server.
+    """
+    async with sse.connect_sse(request.scope, request.receive, request._send) as (
+        read_stream,
+        write_stream,
+    ):
+        # MCP 서버 초기화 옵션에 endpoint 포함
+        initialization_options = mcp._mcp_server.create_initialization_options()
+        initialization_options["endpoint"] = endpoint  # 동적으로 설정 반영
+
+        await mcp._mcp_server.run(
+            read_stream,
+            write_stream,
+            initialization_options,
+        )
+
 # /sse 엔드포인트 (예: 브라우저 테스트용)
 @app.get("/sse", tags=["MCP"])
 async def dev_sse(request: Request):
@@ -53,11 +73,37 @@ async def dev_sse(request: Request):
 
 # /mcp 엔드포인트 (예: AI용 공식 MCP 통신)
 @app.get("/mcp", tags=["MCP"])
-async def production_mcp(request: Request):
+async def production_mcp(
+    request: Request,
+    endpoint: str = Query("/mcp", description="Specify which route this MCP will serve from")
+):
     """
     Production MCP Endpoint (for AI model use).
+    Responds to Smithery's inspect query for tool discovery.
     """
-    return await handle_mcp_stream(request)
+    # ✅ 1. Smithery가 보낸 inspect 요청 처리
+    if "inspect" in request.query_params:
+        return JSONResponse({
+            "tools": [
+                {
+                    "name": "echo",
+                    "description": "Echoes back the input string",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "text": {
+                                "type": "string",
+                                "description": "Text to echo"
+                            }
+                        },
+                        "required": ["text"]
+                    }
+                }
+            ]
+        })
+
+    # ✅ 2. 일반적인 SSE 연결 처리
+    return await handle_mcp_stream_smithery(request, endpoint)
 
 # 기타 라우트 불러오기 (circular import 방지)
 import routes  # noqa
