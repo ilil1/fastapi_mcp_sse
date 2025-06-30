@@ -21,17 +21,15 @@ async def root():
 #        툴이 누락되지 않습니다 :contentReference[oaicite:1]{index=1}
 # ────────────────────────────────────────────────
 mcp_server = FastApiMCP(
-    app,                         # 기존 FastAPI 인스턴스
-    name="FastAPI MCP SSE Demo",
-    mount_path="/mcp",           # Smithery가 스캔할 기본 경로
-    transport_path="/sse",       # SSE 서브경로 (생략하면 /mcp/sse)
-    base_url=os.getenv("PUBLIC_URL", "https://fastapi-mcp-sse.onrender.com"),
+    app,
+    name="FastAPI MCP SSE Demo",
+    registry=mcp._mcp_server,   # ✅ 명시적으로 registry 전달
+    mount_path="/mcp",
+    base_url="..."
 )
 
 mcp_server.mount()               # /mcp , /mcp/sse 라우트 자동 생성
 
-# (선택) logispot_mcp 등으로 직접 정의한 툴을 추가하려면:
-mcp_server.register_tools(mcp._mcp_server)  # 필요 시
 
 # from fastapi import FastAPI, Request
 # from mcp.server.sse import SseServerTransport
