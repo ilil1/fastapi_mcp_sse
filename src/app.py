@@ -46,16 +46,15 @@ async def handle_mcp_stream(request: Request):
         )
 
 async def handle_mcp_stream_smithery(request: Request, endpoint: str):
-    """
-    SSE connection handler that bridges FastAPI with the MCP server.
-    """
+    from logispot_mcp import mcp  # 또는 실제 MCP 모듈
+    import sse_starlette.sse as sse  # 혹은 사용 중인 SSE 모듈
+
     async with sse.connect_sse(request.scope, request.receive, request._send) as (
         read_stream,
         write_stream,
     ):
-        # MCP 서버 초기화 옵션에 endpoint 포함
         initialization_options = mcp._mcp_server.create_initialization_options()
-        initialization_options["endpoint"] = endpoint  # 동적으로 설정 반영
+        initialization_options["endpoint"] = endpoint
 
         await mcp._mcp_server.run(
             read_stream,
@@ -78,16 +77,15 @@ async def production_mcp(
     endpoint: str = Query("/mcp", description="Specify which route this MCP will serve from")
 ):
     """
-    Production MCP Endpoint (for AI model use).
-    Responds to Smithery's inspect query for tool discovery.
+    MCP Endpoint - handles both tool discovery (inspect) and SSE MCP traffic.
     """
-    # ✅ 1. Smithery가 보낸 inspect 요청 처리
+    # ✅ Smithery의 inspect 요청 대응
     if "inspect" in request.query_params:
         return JSONResponse({
             "tools": [
                 {
                     "name": "echo",
-                    "description": "Echoes back the input string",
+                    "description": "Echoes input text",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -102,7 +100,7 @@ async def production_mcp(
             ]
         })
 
-    # ✅ 2. 일반적인 SSE 연결 처리
+    # ✅ 일반 MCP 스트리밍 요청
     return await handle_mcp_stream_smithery(request, endpoint)
 
 # 기타 라우트 불러오기 (circular import 방지)
