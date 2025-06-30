@@ -31,7 +31,7 @@ mcp_server = FastApiMCP(
 mcp_server.mount()               # /mcp , /mcp/sse 라우트 자동 생성
 
 # (선택) logispot_mcp 등으로 직접 정의한 툴을 추가하려면:
-# mcp_server.register_tools(mcp._mcp_server)  # 필요 시
+mcp_server.register_tools(mcp._mcp_server)  # 필요 시
 
 # from fastapi import FastAPI, Request
 # from mcp.server.sse import SseServerTransport
