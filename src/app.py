@@ -1,28 +1,54 @@
-# src/app.py  ───────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────
+#  src/app.py
+#  FastAPI + FastApiMCP 서버 (Logispot 데모)
+#  -----------------------------------------------------------
+import os
+import logging
 from fastapi import FastAPI, APIRouter
 from fastapi_mcp import FastApiMCP
-from pydantic import BaseModel
-from logispot_mcp import token_authentication, get_order_list  # 기존 툴 함수
+from pydantic import BaseModel, Field
 
-# 1) FastAPI 앱
-app = FastAPI(title="Logispot MCP Demo", version="1.0.0")
+# ------------------------------------------------------------------
+# 0. 로깅 설정
+# ------------------------------------------------------------------
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+)
+logger = logging.getLogger("logispot.app")
+
+# ------------------------------------------------------------------
+# 1. FastAPI 앱 & 공용 라우터
+# ------------------------------------------------------------------
+app = FastAPI(
+    title="Logispot MCP Demo",
+    version="1.0.0",
+    docs_url="/docs",        # 필요 없으면 None
+    redoc_url=None,
+)
 router = APIRouter(prefix="/logispot", tags=["Logispot"])
 
-# 2) 로그인 툴 → 라우트
+# ------------------------------------------------------------------
+# 2. 로그인 툴  -------------------------------------------------------
+# ------------------------------------------------------------------
 class TokenAuthIn(BaseModel):
-    id: str
-    password: str
-    user_type: int
+    id: str = Field(..., example="driver001")
+    password: str = Field(..., example="p@ssw0rd!")
+    user_type: int = Field(..., example=1)
 
 @router.post(
     "/token-auth",
     operation_id="token_authentication",   # MCP 툴 이름
-    response_model=dict
+    response_model=dict,
 )
 async def token_auth_ep(body: TokenAuthIn):
-    return await token_authentication(**body.dict())
+    # 외부 API 호출은 함수 내부에서만!
+    from logispot_mcp import token_authentication
+    return await token_authentication(**body.model_dump())
 
-# 3) 오더 목록 툴 → 라우트
+# ------------------------------------------------------------------
+# 3. 오더 목록 툴  ---------------------------------------------------
+# ------------------------------------------------------------------
 class OrderListIn(BaseModel):
     reference_date: str
     is_driver_management: bool
@@ -34,23 +60,53 @@ class OrderListIn(BaseModel):
 
 @router.post(
     "/order-list",
-    operation_id="get_order_list",         # MCP 툴 이름
-    response_model=str
+    operation_id="get_order_list",          # MCP 툴 이름
+    response_model=str,
 )
 async def order_list_ep(body: OrderListIn):
-    return await get_order_list(**body.dict())
+    from logispot_mcp import get_order_list
+    return await get_order_list(**body.model_dump())
 
-# 4) 라우터 등록
+# ------------------------------------------------------------------
+# 4. 라우터 등록
+# ------------------------------------------------------------------
 app.include_router(router)
 
-# 5) MCP 서버 ― mount_path는 여기서만 지정
+# ------------------------------------------------------------------
+# 5. MCP 서버 마운트 (/mcp)
+#    - SSE  : /mcp/sse
+#    - POST : /mcp/messages/
+# ------------------------------------------------------------------
 mcp_server = FastApiMCP(app)
-mcp_server.mount(mount_path="/mcp")        # SSE: /mcp/sse , POST: /mcp/messages/
+mcp_server.mount(mount_path="/mcp")
 
-# 6) 테스트용 루트 엔드포인트
+# ------------------------------------------------------------------
+# 6. 헬스체크
+# ------------------------------------------------------------------
 @app.get("/")
 async def root():
     return {"status": "ok"}
+
+# ------------------------------------------------------------------
+# 7. 로컬 실행용 진입점
+#    * Dockerfile CMD 나 `python -m src.app` 으로 실행 가능
+# ------------------------------------------------------------------
+def main() -> None:
+    """Run with:  python -m src.app  (또는 uvicorn)"""
+    import uvicorn
+
+    port = int(os.getenv("PORT", "8000"))  # Smithery는 $PORT를 주입
+    logger.info(f"🔈  Uvicorn starting on 0.0.0.0:{port}")
+    uvicorn.run(
+        "src.app:app",
+        host="0.0.0.0",
+        port=port,
+        log_level="info",
+        timeout_keep_alive=90,
+    )
+
+if __name__ == "__main__":
+    main()
 
 
 
