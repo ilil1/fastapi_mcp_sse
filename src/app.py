@@ -45,16 +45,17 @@ async def order_list_ep(body: OrderListIn):
 
 app.include_router(router)
 
-# ------------- MCP 서버 초기화 & 마운트 -------------
+# ------------- MCP 서버 초기화 & 커스텀 옵션 -------------
 mcp_server = FastApiMCP(app)
 
-# (선택) 초기화 옵션 커스터마이즈
-init_opts = mcp_server._mcp_server.create_initialization_options()
-init_opts.system_prompt = "모든 응답은 한국어로, 톤은 차분·친절하게."
-mcp_server._mcp_server.initialization_options = init_opts
+init_opts = mcp_server.server.create_initialization_options()
+init_opts.system_prompt = (
+    "당신은 Logispot 물류 전용 AI 비서입니다. 모든 답변은 한국어로, "
+    "친절하고 차분한 톤으로 작성하세요."
+)
+mcp_server.server.initialization_options = init_opts
 
-# 마운트 후 자동으로 /mcp/sse, /mcp/messages/* 경로가 준비됨
-mcp_server.mount("/mcp")
+mcp_server.mount("/mcp")          # SSE: /mcp/sse, POST: /mcp/messages/
 
 # 헬스체크
 @app.get("/")
