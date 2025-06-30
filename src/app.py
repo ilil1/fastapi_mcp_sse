@@ -1,34 +1,34 @@
-import os
-from fastapi import FastAPI, Request
-from fastapi_mcp import FastApiMCP           # ⬅️  NEW
-from .logispot_mcp import mcp  # ← app.py와 동일 디렉토리라면 가능
+"""
+FastAPI + FastApiMCP + Logispot 툴
+"""
+from fastapi import FastAPI
+from fastapi_mcp import FastApiMCP
+
+# logispot_mcp.py 파일에 정의된 FastMCP 인스턴스 가져오기
+from logispot_mcp import mcp as logispot_mcp
 
 app = FastAPI(
-    title="FastAPI MCP SSE",
+    title="Logispot MCP Server",
     version="1.0.0",
 )
 
-# ────────────────────────────────────────────────
-# ❶  일반 REST / 기타 라우트 먼저 선언
-# ────────────────────────────────────────────────
 @app.get("/")
-async def root():
+async def health():
     return {"status": "ok"}
 
-# ────────────────────────────────────────────────
-# ❷  MCP 서버를 FastAPI 앱에 “마운트”
-#     ※ 모든 라우트를 선언한 **뒤**에 mount 해야
-#        툴이 누락되지 않습니다 :contentReference[oaicite:1]{index=1}
-# ────────────────────────────────────────────────
+# FastApiMCP 서버 생성
 mcp_server = FastApiMCP(
     app,
-    name="FastAPI MCP SSE Demo",
-    registry=mcp._mcp_server,   # ✅ 명시적으로 registry 전달
-    mount_path="/mcp",
-    base_url=os.getenv("PUBLIC_URL", "https://fastapi-mcp-sse.onrender.com")
+    mount_path="/mcp",     # Smithery 가 스캔할 경로
+    # transport_path 생략 → 기본 /mcp/sse
 )
 
-mcp_server.mount()               # /mcp , /mcp/sse 라우트 자동 생성
+# logispot 툴 등록 (★ 핵심 한 줄)
+mcp_server.register_tools(logispot_mcp)
+
+# 반드시 마지막에 호출
+mcp_server.mount()
+
 
 
 # from fastapi import FastAPI, Request

@@ -1,3 +1,4 @@
 fastapi==0.115.14
+fastapi-mcp==0.3.*
 uvicorn[standard]
-fastapi-mcp          # 공식 라이브러리
+httpx>=0.28.0          # logispot_mcp 가 비동기 POST 호출에 사용
