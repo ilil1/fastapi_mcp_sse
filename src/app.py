@@ -1,19 +1,37 @@
-from fastapi import FastAPI
-from fastapi_mcp import FastApiMCP
+import os
+from fastapi import FastAPI, Request
+from fastapi_mcp import FastApiMCP           # ⬅️  NEW
+from logispot_mcp import mcp                 # 기존 직접 등록한 툴 유지 시 사용 가능
 
-app = FastAPI(title="FastAPI MCP Demo")
+app = FastAPI(
+    title="FastAPI MCP SSE",
+    version="1.0.0",
+)
 
-# ──────────── 일반 REST 엔드포인트 예시 ────────────
-@app.get("/hello")
-async def hello(name: str = "world"):
-    """간단 인사"""
-    return {"message": f"Hello, {name}!"}
+# ────────────────────────────────────────────────
+# ❶  일반 REST / 기타 라우트 먼저 선언
+# ────────────────────────────────────────────────
+@app.get("/")
+async def root():
+    return {"status": "ok"}
 
-# ──────────── MCP 서버 마운트 ────────────
-mcp = FastApiMCP(app, mount_path="/mcp")  # transport_path 기본값 /mcp/sse
-mcp.mount()                               # ← /mcp, /mcp/sse 자동 생성
-                             # /mcp , /mcp/sse 자동 생성
+# ────────────────────────────────────────────────
+# ❷  MCP 서버를 FastAPI 앱에 “마운트”
+#     ※ 모든 라우트를 선언한 **뒤**에 mount 해야
+#        툴이 누락되지 않습니다 :contentReference[oaicite:1]{index=1}
+# ────────────────────────────────────────────────
+mcp_server = FastApiMCP(
+    app,                         # 기존 FastAPI 인스턴스
+    name="FastAPI MCP SSE Demo",
+    mount_path="/mcp",           # Smithery가 스캔할 기본 경로
+    transport_path="/sse",       # SSE 서브경로 (생략하면 /mcp/sse)
+    base_url=os.getenv("PUBLIC_URL", "https://fastapi-mcp-sse.onrender.com"),
+)
 
+mcp_server.mount()               # /mcp , /mcp/sse 라우트 자동 생성
+
+# (선택) logispot_mcp 등으로 직접 정의한 툴을 추가하려면:
+# mcp_server.register_tools(mcp._mcp_server)  # 필요 시
 
 # from fastapi import FastAPI, Request
 # from mcp.server.sse import SseServerTransport
