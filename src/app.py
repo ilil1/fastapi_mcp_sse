@@ -72,23 +72,70 @@ async def dev_sse(request: Request):
 
 # /mcp 엔드포인트 (예: AI용 공식 MCP 통신)
 @app.get("/mcp")
-async def inspect(request: Request):
-    if "inspect" in request.query_params:
-        return {
-            "tools": [
-                {
-                    "name": "echo",
-                    "description": "Echo input text",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "text": {"type": "string"}
-                        },
-                        "required": ["text"]
-                    }
-                }
-            ]
-        }
+async def inspect():
+    return {
+        "tools": [
+            {
+                "name": "save_project_context",
+                "description": "Save project-specific context with relationships",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string", "description": "Unique identifier for the context"},
+                        "projectId": {"type": "string", "description": "Project identifier"},
+                        "content": {"type": "string", "description": "Context content to save"},
+                        "parentContextId": {"type": "string", "description": "Optional ID of parent context"},
+                        "references": {"type": "array", "items": {"type": "string"}, "description": "Optional related context IDs"},
+                        "tags": {"type": "array", "items": {"type": "string"}, "description": "Optional tags for categorizing"},
+                        "metadata": {"type": "object", "description": "Optional additional metadata"},
+                    },
+                    "required": ["id", "projectId", "content"],
+                },
+            },
+            {
+                "name": "save_conversation_context",
+                "description": "Save conversation context with continuation support",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string", "description": "Unique identifier for the context"},
+                        "sessionId": {"type": "string", "description": "Conversation session identifier"},
+                        "content": {"type": "string", "description": "Context content to save"},
+                        "continuationOf": {"type": "string", "description": "Optional ID of previous context"},
+                        "tags": {"type": "array", "items": {"type": "string"}, "description": "Optional tags for categorizing"},
+                        "metadata": {"type": "object", "description": "Optional additional metadata"},
+                    },
+                    "required": ["id", "sessionId", "content"],
+                },
+            },
+            {
+                "name": "get_context",
+                "description": "Retrieve context by ID and optional project ID",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string", "description": "ID of the context to retrieve"},
+                        "projectId": {"type": "string", "description": "Optional project ID for project contexts"},
+                    },
+                    "required": ["id"],
+                },
+            },
+            {
+                "name": "list_contexts",
+                "description": "List contexts with filtering options",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "projectId": {"type": "string", "description": "Optional project ID to filter by"},
+                        "tag": {"type": "string", "description": "Optional tag to filter by"},
+                        "type": {"type": "string", "enum": ["project", "conversation"], "description": "Optional type to filter by"},
+                    },
+                },
+            },
+        ],
+        "version": "0.1.0",
+        "status": "success"
+    }
 
 # 기타 라우트 불러오기 (circular import 방지)
 import routes  # noqa
