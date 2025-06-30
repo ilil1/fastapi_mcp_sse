@@ -1,30 +1,21 @@
+# src/app.py  ───────────────────────────────────────────────────────────────
 from fastapi import FastAPI
 from fastapi_mcp import FastApiMCP
+from logispot_mcp import mcp as lspot_mcp   # FastMCP 인스턴스
 
-# ① FastAPI 앱
-app = FastAPI(title="Logispot MCP Demo", version="1.0.0")
+app = FastAPI(title="Main API", version="1.0.0")
+
+# 1) 메인용 MCP
+main_mcp = FastApiMCP(app)
+main_mcp.mount(mount_path="/mcp")           # → /mcp/…
+
+# 2) logispot MCP 서브-앱
+lspot_app = lspot_mcp.http_app(path="/mcp") # FastMCP → ASGI 변환
+app.mount("/logispot-mcp", lspot_app)       # → /logispot-mcp/mcp/…
 
 @app.get("/")
 async def root():
     return {"status": "ok"}
-
-# ② MCP 서버 생성 ― ⛔ mount_path 넣지 않음
-mcp_server = FastApiMCP(app)
-
-# ③ (선택) FastAPI 엔드포인트 외에 별도 MCP Tool을 추가하려면
-#     └ fastapi-mcp 0.2+에서는 register_tools 메서드가 삭제됐습니다.
-#       - 별도 Tool을 노출하려면
-#         1) logispot_mcp에 정의한 함수를 FastAPI 라우트로 감싸거나
-#         2) modelcontextprotocol SDK의 Low-level Server를 별도 엔드포인트로 mount
-#       중 하나를 선택해야 합니다.
-
-# ④ MCP 서버 mount. 여기서 경로를 지정
-mcp_server.mount(mount_path="/mcp")   # SSE는 /mcp/sse, POST는 /mcp/messages/
-
-# uvicorn 실행 시: uvicorn src.app:app --reload
-
-
-
 
 
 # from fastapi import FastAPI, Request
