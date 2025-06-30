@@ -71,37 +71,24 @@ async def dev_sse(request: Request):
     return await handle_mcp_stream(request)
 
 # /mcp 엔드포인트 (예: AI용 공식 MCP 통신)
-@app.get("/mcp", tags=["MCP"])
-async def production_mcp(
-    request: Request,
-    endpoint: str = Query("/mcp", description="Specify which route this MCP will serve from")
-):
-    """
-    MCP Endpoint - handles both tool discovery (inspect) and SSE MCP traffic.
-    """
-    # ✅ Smithery의 inspect 요청 대응
+@app.get("/mcp")
+async def inspect(request: Request):
     if "inspect" in request.query_params:
-        return JSONResponse({
+        return {
             "tools": [
                 {
                     "name": "echo",
-                    "description": "Echoes input text",
+                    "description": "Echo input text",
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "text": {
-                                "type": "string",
-                                "description": "Text to echo"
-                            }
+                            "text": {"type": "string"}
                         },
                         "required": ["text"]
                     }
                 }
             ]
-        })
-
-    # ✅ 일반 MCP 스트리밍 요청
-    return await handle_mcp_stream_smithery(request, endpoint)
+        }
 
 # 기타 라우트 불러오기 (circular import 방지)
 import routes  # noqa
