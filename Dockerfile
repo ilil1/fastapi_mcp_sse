@@ -23,6 +23,6 @@ COPY . /app
 EXPOSE 8000
 
 # 5) 실행
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "src.server:app", "--host", "0.0.0.0", "--port", "8000"]
 
 
