@@ -1,20 +1,9 @@
-runtime: "container"
-
 startCommand:
-  type: http
-  configSchema:
-    type: object
-    properties:
-      endpoint:
-        type: string
-        title: "MCP SSE Endpoint"
-        description: "Specify which route this MCP will serve from"
-        default: "/mcp"
-    required:
-      - endpoint
-  exampleConfig:
-    endpoint: "/mcp"
+  type: remote
+  url: https://fastapi-mcp-sse.onrender.com/sse   # Render 배포 URL
+  transport: sse                                  # 클라이언트‑→서버 연결 방식
+configSchema:
+  type: object
+  description: "Public demo – no config required"
+  exampleConfig: {}
 
-build:
-  dockerfile: "Dockerfile"
-  dockerBuildPath: "."
