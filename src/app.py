@@ -70,8 +70,7 @@ else:
 mcp_server.server.initialization_options = init_opts
 
 # 4) 마운트
-mcp_server.mount(mount_path="/mcp")         # SSE: /mcp/sse, POST: /mcp/messages/
-
+mcp_server.mount(mount_path="/mcp", transport="sse")       # SSE: /mcp/sse, POST: /mcp/messages/
 
 # 헬스체크
 @app.get("/")
