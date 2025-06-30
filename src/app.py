@@ -1,54 +1,34 @@
-# ───────────────────────────────────────────────────────────
-#  src/app.py
-#  FastAPI + FastApiMCP 서버 (Logispot 데모)
-#  -----------------------------------------------------------
-import os
-import logging
+# src/app.py
+import os, logging
 from fastapi import FastAPI, APIRouter
-from fastapi_mcp import FastApiMCP
 from pydantic import BaseModel, Field
+from fastapi_mcp import FastApiMCP
 
-# ------------------------------------------------------------------
-# 0. 로깅 설정
-# ------------------------------------------------------------------
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
 )
 logger = logging.getLogger("logispot.app")
 
-# ------------------------------------------------------------------
-# 1. FastAPI 앱 & 공용 라우터
-# ------------------------------------------------------------------
 app = FastAPI(
     title="Logispot MCP Demo",
     version="1.0.0",
-    docs_url="/docs",        # 필요 없으면 None
-    redoc_url=None,
+    docs_url="/docs",
 )
+
 router = APIRouter(prefix="/logispot", tags=["Logispot"])
 
-# ------------------------------------------------------------------
-# 2. 로그인 툴  -------------------------------------------------------
-# ------------------------------------------------------------------
+# ----------------- 툴 엔드포인트 -----------------
 class TokenAuthIn(BaseModel):
     id: str = Field(..., example="driver001")
     password: str = Field(..., example="p@ssw0rd!")
     user_type: int = Field(..., example=1)
 
-@router.post(
-    "/token-auth",
-    operation_id="token_authentication",   # MCP 툴 이름
-    response_model=dict,
-)
+@router.post("/token-auth", operation_id="token_authentication")
 async def token_auth_ep(body: TokenAuthIn):
-    # 외부 API 호출은 함수 내부에서만!
     from logispot_mcp import token_authentication
     return await token_authentication(**body.model_dump())
 
-# ------------------------------------------------------------------
-# 3. 오더 목록 툴  ---------------------------------------------------
-# ------------------------------------------------------------------
 class OrderListIn(BaseModel):
     reference_date: str
     is_driver_management: bool
@@ -58,57 +38,28 @@ class OrderListIn(BaseModel):
     max_result: int = 20
     version2: bool = True
 
-@router.post(
-    "/order-list",
-    operation_id="get_order_list",          # MCP 툴 이름
-    response_model=str,
-)
+@router.post("/order-list", operation_id="get_order_list")
 async def order_list_ep(body: OrderListIn):
     from logispot_mcp import get_order_list
     return await get_order_list(**body.model_dump())
 
-# ------------------------------------------------------------------
-# 4. 라우터 등록
-# ------------------------------------------------------------------
 app.include_router(router)
 
-# ------------------------------------------------------------------
-# 5. MCP 서버 마운트 (/mcp)
-#    - SSE  : /mcp/sse
-#    - POST : /mcp/messages/
-# ------------------------------------------------------------------
+# ------------- MCP 서버 초기화 & 마운트 -------------
 mcp_server = FastApiMCP(app)
-mcp_server.mount(mount_path="/mcp")
 
-# ------------------------------------------------------------------
-# 6. 헬스체크
-# ------------------------------------------------------------------
+# (선택) 초기화 옵션 커스터마이즈
+init_opts = mcp_server.create_initialization_options()
+init_opts.system_prompt = "당신은 Logispot 전문 AI 비서입니다. 모든 답변은 한국어로 작성하세요."
+mcp_server.set_initialization_options(init_opts)
+
+# 마운트 후 자동으로 /mcp/sse, /mcp/messages/* 경로가 준비됨
+mcp_server.mount("/mcp")
+
+# 헬스체크
 @app.get("/")
 async def root():
     return {"status": "ok"}
-
-# ------------------------------------------------------------------
-# 7. 로컬 실행용 진입점
-#    * Dockerfile CMD 나 `python -m src.app` 으로 실행 가능
-# ------------------------------------------------------------------
-def main() -> None:
-    """Run with:  python -m src.app  (또는 uvicorn)"""
-    import uvicorn
-
-    port = int(os.getenv("PORT", "8000"))  # Smithery는 $PORT를 주입
-    logger.info(f"🔈  Uvicorn starting on 0.0.0.0:{port}")
-    uvicorn.run(
-        "src.app:app",
-        host="0.0.0.0",
-        port=port,
-        log_level="info",
-        timeout_keep_alive=90,
-    )
-
-if __name__ == "__main__":
-    main()
-
-
 
 # from fastapi import FastAPI, Request
 # from mcp.server.sse import SseServerTransport
