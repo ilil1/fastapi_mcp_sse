@@ -46,12 +46,32 @@ async def order_list_ep(body: OrderListIn):
 app.include_router(router)
 
 # ------------- MCP 서버 초기화 & 커스텀 옵션 -------------
-mcp_server = FastApiMCP(app)
+# MCP 서버 래퍼
+mcp_server = FastApiMCP(app)          # <-- FastApiMCP 0.3+ 사용
 
+# 1) 초기화 옵션 객체를 "빈 상태"로 받기
 init_opts = mcp_server.server.create_initialization_options()
+
+# 2) SDK 버전에 따라 알맞은 필드에 시스템 프롬프트 넣기
+if hasattr(init_opts, "instructions"):        # mcp 1.6+ (권장)
+    init_opts.instructions = (
+        "당신은 Logispot 물류 전문 AI 비서입니다. "
+        "모든 답변은 한국어로, 차분하고 친절한 톤으로 작성하세요."
+    )
+elif hasattr(init_opts, "system_prompt"):     # 구버전(≤1.5)
+    init_opts.system_prompt = (
+        "당신은 Logispot 물류 전문 AI 비서입니다. "
+        "모든 답변은 한국어로, 차분하고 친절한 톤으로 작성하세요."
+    )
+else:
+    raise RuntimeError("SDK가 다시 바뀐 것 같습니다—필드명을 확인하세요!")
+
+# 3) 수정한 옵션을 서버에 적용
 mcp_server.server.initialization_options = init_opts
 
-mcp_server.mount("/mcp")          # SSE: /mcp/sse, POST: /mcp/messages/
+# 4) 마운트
+mcp_server.mount(mount_path="/mcp")         # SSE: /mcp/sse, POST: /mcp/messages/
+
 
 # 헬스체크
 @app.get("/")
