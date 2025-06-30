@@ -1,21 +1,57 @@
 # src/app.py  ───────────────────────────────────────────────────────────────
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from fastapi_mcp import FastApiMCP
-from logispot_mcp import mcp as lspot_mcp   # FastMCP 인스턴스
+from pydantic import BaseModel
+from logispot_mcp import token_authentication, get_order_list  # 기존 툴 함수
 
-app = FastAPI(title="Main API", version="1.0.0")
+# 1) FastAPI 앱
+app = FastAPI(title="Logispot MCP Demo", version="1.0.0")
+router = APIRouter(prefix="/logispot", tags=["Logispot"])
 
-# 1) 메인용 MCP
-main_mcp = FastApiMCP(app)
-main_mcp.mount(mount_path="/mcp")           # → /mcp/…
+# 2) 로그인 툴 → 라우트
+class TokenAuthIn(BaseModel):
+    id: str
+    password: str
+    user_type: int
 
-# 2) logispot MCP 서브-앱
-lspot_app = lspot_mcp.http_app(path="/mcp") # FastMCP → ASGI 변환
-app.mount("/logispot-mcp", lspot_app)       # → /logispot-mcp/mcp/…
+@router.post(
+    "/token-auth",
+    operation_id="token_authentication",   # MCP 툴 이름
+    response_model=dict
+)
+async def token_auth_ep(body: TokenAuthIn):
+    return await token_authentication(**body.dict())
 
+# 3) 오더 목록 툴 → 라우트
+class OrderListIn(BaseModel):
+    reference_date: str
+    is_driver_management: bool
+    start_date: str
+    end_date: str
+    page: int = 1
+    max_result: int = 20
+    version2: bool = True
+
+@router.post(
+    "/order-list",
+    operation_id="get_order_list",         # MCP 툴 이름
+    response_model=str
+)
+async def order_list_ep(body: OrderListIn):
+    return await get_order_list(**body.dict())
+
+# 4) 라우터 등록
+app.include_router(router)
+
+# 5) MCP 서버 ― mount_path는 여기서만 지정
+mcp_server = FastApiMCP(app)
+mcp_server.mount(mount_path="/mcp")        # SSE: /mcp/sse , POST: /mcp/messages/
+
+# 6) 테스트용 루트 엔드포인트
 @app.get("/")
 async def root():
     return {"status": "ok"}
+
 
 
 # from fastapi import FastAPI, Request
