@@ -1,33 +1,26 @@
-"""
-FastAPI + FastApiMCP + Logispot 툴
-"""
 from fastapi import FastAPI
 from fastapi_mcp import FastApiMCP
 
-# logispot_mcp.py 파일에 정의된 FastMCP 인스턴스 가져오기
-from logispot_mcp import mcp as logispot_mcp
+# 같은 디렉터리(src)에 있는 logispot_mcp.py 에서 FastMCP 인스턴스 가져오기
+from logispot_mcp import mcp as lspot_mcp
 
-app = FastAPI(
-    title="Logispot MCP Server",
-    version="1.0.0",
-)
+app = FastAPI(title="Logispot MCP Demo", version="1.0.0")
+
 
 @app.get("/")
-async def health():
+async def root():
     return {"status": "ok"}
 
+
 # FastApiMCP 서버 생성
-mcp_server = FastApiMCP(
-    app,
-    mount_path="/mcp",     # Smithery 가 스캔할 경로
-    # transport_path 생략 → 기본 /mcp/sse
-)
+mcp_server = FastApiMCP(app, mount_path="/mcp")   # SSE 경로는 /mcp/sse
 
-# logispot 툴 등록 (★ 핵심 한 줄)
-mcp_server.register_tools(logispot_mcp)
+# Logispot 툴을 등록
+mcp_server.register_tools(lspot_mcp)
 
-# 반드시 마지막에 호출
+# 마지막에 mount()
 mcp_server.mount()
+
 
 
 

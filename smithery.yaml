@@ -1,12 +1,13 @@
 startCommand:
   type: http
   command: uvicorn
-  args: ["src:app", "--host", "0.0.0.0", "--port", "8000"]
-  port: 8000            # <- Smithery가 컨테이너 내부에서 연결할 포트
+  args: ["app:app", "--host", "0.0.0.0", "--port", "8000"]
+  port: 8000           # Dockerfile 과 동일
 
-configSchema:           # (없으면 UI에 회색 박스 경고)
+# 런타임 옵션이 아예 필요 없다면 아래 블록을 제거해도 무방합니다.
+configSchema:
   type: object
-  description: "Demo – runtime config 없음"
+  description: "Logispot MCP · 별도 설정 불필요"
   exampleConfig: {}
 
 
