@@ -1,24 +1,18 @@
+# docker-compose.yaml ─────────────────────────────────────
+version: "3.9"
+
 services:
   mcp:
     build: .
     container_name: mcp-server
-    expose:
-      - "8000"
-    networks:
-      - mcp-network
-
-  nginx:
-    image: nginx:latest
-    container_name: mcp-nginx
+    # 호스트 80 → 컨테이너 8000
     ports:
-      - "80:80"
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - mcp
-    networks:
-      - mcp-network
+      - "80:8000"
+    # Smithery 배포 환경에서는 $PORT 변수를 주입해 주므로,
+    # 로컬·서버 어디서든 8000으로 뜨게 강제해 둡니다.
+    environment:
+      - PORT=8000
+    # 필요하다면 로컬 개발용 볼륨·env 파일을 추가로 선언하세요
+    # volumes:
+    #   - .:/app
 
-networks:
-  mcp-network:
-    driver: bridge
