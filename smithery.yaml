@@ -1,7 +1,5 @@
 version: 1
-
 runtime: "container"
-
 startCommand:
   type: http
   configSchema:
@@ -16,6 +14,5 @@ startCommand:
       - endpoint
   exampleConfig:
     endpoint: "/mcp"
-
 build:
   dockerfile: Dockerfile
