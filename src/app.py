@@ -1,17 +1,18 @@
 from fastapi import FastAPI
 from fastapi_mcp import FastApiMCP
 
-app = FastAPI(title="FastAPI MCP Demo")
+app = FastAPI(title="FastAPI MCP Demo")
 
-# 일반 라우트 예시 – 여기에 정의된 엔드포인트가 곧바로 MCP 툴이 됩니다
+# ──────────── 일반 REST 엔드포인트 예시 ────────────
 @app.get("/hello")
 async def hello(name: str = "world"):
     """간단 인사"""
     return {"message": f"Hello, {name}!"}
 
-# 🔑 단 2줄로 MCP 서버 완성
-mcp = FastApiMCP(app, mount_path="/mcp")   # ← base_url 전달 안함!
-mcp.mount()                                # /mcp , /mcp/sse 자동 생성
+# ──────────── MCP 서버 마운트 ────────────
+mcp = FastApiMCP(app, mount_path="/mcp")  # transport_path 기본값 /mcp/sse
+mcp.mount()                               # ← /mcp, /mcp/sse 자동 생성
+                             # /mcp , /mcp/sse 자동 생성
 
 
 # from fastapi import FastAPI, Request
