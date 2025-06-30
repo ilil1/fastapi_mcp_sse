@@ -15,14 +15,6 @@ mcp = FastMCP("logispot_mcp")
 # Laravel API 경로 매핑
 def get_api_map():
     return {
-        "lookup_orders": f"{LARAVEL_API_BASE}/orders/lookup",
-        "check_inventory": f"{LARAVEL_API_BASE}/inventory/check",
-        "track_shipment": f"{LARAVEL_API_BASE}/shipment/track",
-        "get_client_info": f"{LARAVEL_API_BASE}/clients/info",
-        "calculate_fee": f"{LARAVEL_API_BASE}/fees/calculate",
-        "create_order": f"{LARAVEL_API_BASE}/orders/create",
-        "cancel_order": f"{LARAVEL_API_BASE}/orders/cancel",
-        "get_driver_schedule": f"{LARAVEL_API_BASE}/drivers/schedule",
         "token_authentication": f"{LARAVEL_API_BASE}/authentication/token",
         "get_order_list": f"{LARAVEL_API_BASE}/orders/get"
     }
@@ -50,80 +42,6 @@ async def call_laravel(func_name: str, payload: dict, use_auth: bool = False):
             print(f"[네트워크 오류] {str(e)}")
             return {"error": "서버와의 연결에 실패했습니다."}
 
-
-# ✅ 1. 주문 조회
-@mcp.tool()
-async def lookup_orders(order_id: str):
-    """주문번호로 주문 정보를 조회합니다."""
-    return await call_laravel("lookup_orders", {"order_id": order_id})
-
-# ✅ 2. 재고 확인
-@mcp.tool()
-async def check_inventory(item_code: str, warehouse_id: str):
-    """상품코드와 창고ID로 재고를 확인합니다."""
-    return await call_laravel("check_inventory", {
-        "item_code": item_code,
-        "warehouse_id": warehouse_id
-    })
-
-# ✅ 3. 운송장 조회
-@mcp.tool()
-async def track_shipment(tracking_number: str):
-    """운송장 번호로 배송 상태를 추적합니다."""
-    return await call_laravel("track_shipment", {
-        "tracking_number": tracking_number
-    })
-
-# ✅ 4. 고객 정보 조회
-@mcp.tool()
-async def get_client_info(client_id: str):
-    """고객 ID로 고객 정보를 조회합니다."""
-    return await call_laravel("get_client_info", {"client_id": client_id})
-
-# ✅ 5. 수수료 계산
-@mcp.tool()
-async def calculate_fee(weight: float, region: str):
-    """무게와 지역을 기반으로 배송 수수료를 계산합니다."""
-    return await call_laravel("calculate_fee", {
-        "weight": weight,
-        "region": region
-    })
-
-# ✅ 6. 주문 생성
-@mcp.tool()
-async def create_order(order_data: dict):
-    """주문 데이터를 기반으로 주문을 생성합니다."""
-    return await call_laravel("create_order", order_data)
-
-# ✅ 7. 주문 취소
-@mcp.tool()
-async def cancel_order(order_id: str):
-    """주문 ID로 주문을 취소합니다."""
-    return await call_laravel("cancel_order", {
-        "order_id": order_id,
-    })
-
-# ✅ 8. 운전기사 스케줄 조회
-@mcp.tool()
-async def get_driver_schedule(driver_id: str):
-    """운전기사 ID로 스케줄을 조회합니다."""
-    response = await call_laravel("get_driver_schedule", {
-        "driver_id": driver_id
-    })
-
-    if "error" in response:
-        return response["error"]
-
-    schedule = response.get("schedule", [])
-    if not schedule:
-        return f"{driver_id}의 스케줄이 없습니다."
-
-    # 사용자에게 보여줄 문자열만 리턴
-    message = f"{driver_id}의 스케줄은 총 {len(schedule)}건입니다.\n"
-    for item in schedule:
-        message += f"- {item['time']}: {item['task']}\n"
-
-    return message.strip()
 
 # ✅ 9. 토큰 인증 (로그인)
 @mcp.tool()
