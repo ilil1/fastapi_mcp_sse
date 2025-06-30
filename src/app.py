@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI, Request
+from fastapi_mcp import FastApiMCP           # ⬅️  NEW
 from .logispot_mcp import mcp  # ← app.py와 동일 디렉토리라면 가능
 
 app = FastAPI(
