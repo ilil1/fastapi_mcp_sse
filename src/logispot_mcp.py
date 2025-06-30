@@ -7,35 +7,35 @@ import os
 # 전역 변수
 auth_token = None
 
-# .env 파일 불러오기
-load_dotenv()
-
-# 환경 구분
-env = os.getenv("APP_ENV", "local")
-
-# 환경에 따라 API 주소 선택
-if env == "test":
-    api_base = os.getenv("LARAVEL_TEST_API_BASE")
-elif env == "prod":
-    api_base = os.getenv("LARAVEL_PROD_API_BASE")
-else:
-    api_base = os.getenv("LARAVEL_LOCAL_API_BASE")
-
-# 예외 처리: 환경변수가 빠졌을 때 명확하게 알림
-if not api_base:
-    raise RuntimeError("API 주소가 설정되지 않았습니다! .env 파일을 확인해주세요.")
-
-# 전역적으로 사용할 API Base URL
-LARAVEL_API_BASE = api_base
-
-# import os
+# # .env 파일 불러오기
+# load_dotenv()
 #
-# api_base = os.getenv("LARAVEL_API_BASE")
+# # 환경 구분
+# env = os.getenv("APP_ENV", "local")
 #
+# # 환경에 따라 API 주소 선택
+# if env == "test":
+#     api_base = os.getenv("LARAVEL_TEST_API_BASE")
+# elif env == "prod":
+#     api_base = os.getenv("LARAVEL_PROD_API_BASE")
+# else:
+#     api_base = os.getenv("LARAVEL_LOCAL_API_BASE")
+#
+# # 예외 처리: 환경변수가 빠졌을 때 명확하게 알림
 # if not api_base:
-#     raise RuntimeError("LARAVEL_API_BASE 환경변수가 설정되지 않았습니다!")
+#     raise RuntimeError("API 주소가 설정되지 않았습니다! .env 파일을 확인해주세요.")
 #
+# # 전역적으로 사용할 API Base URL
 # LARAVEL_API_BASE = api_base
+
+import os
+
+api_base = os.getenv("LARAVEL_API_BASE")
+
+if not api_base:
+    raise RuntimeError("LARAVEL_API_BASE 환경변수가 설정되지 않았습니다!")
+
+LARAVEL_API_BASE = api_base
 
 # MCP 서버 인스턴스
 mcp = FastMCP("logispot_mcp")
