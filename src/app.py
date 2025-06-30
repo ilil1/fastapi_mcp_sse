@@ -4,30 +4,87 @@ from fastapi import FastAPI, APIRouter
 from pydantic import BaseModel, Field
 from fastapi_mcp import FastApiMCP
 
+# ────────────────────────────────────────────────────────────
+# app.py  ―  Logispot MCP Demo (FastApiMCP 버전)
+# Python 3.10+ /  pip install fastapi fastapi-mcp httpx python-dotenv uvicorn
+# ────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────────────────
+# app.py  ―  Logispot MCP Demo (FastApiMCP 버전)
+# Python 3.10+ /  pip install fastapi fastapi-mcp httpx python-dotenv uvicorn
+# ────────────────────────────────────────────────────────────
+
+import os
+import logging
+from typing import Any
+
+import httpx
+from dotenv import load_dotenv
+from fastapi import FastAPI, APIRouter
+from pydantic import BaseModel, Field
+from fastapi_mcp import FastApiMCP
+
+# ──────────────── 1. 환경 변수 & 로깅 ────────────────
+load_dotenv(".env", override=True)
+
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
 )
-logger = logging.getLogger("logispot.app")
+logger = logging.getLogger("logispot.mcp")
 
+# ──────────────── 2. 상수 / 전역 변수 ────────────────
+LARAVEL_API_BASE = os.getenv("LARAVEL_API_BASE", "https://api.test-spot.com/api/v1")
+AUTH_TOKEN: str | None = None        # 로그인 성공 시 저장되는 JWT
+
+# ──────────────── 3. FastAPI 앱 & 라우터 ────────────────
 app = FastAPI(
-    title="Logispot MCP Demo",
+    title="Logispot MCP Demo (FastApiMCP)",
     version="1.0.0",
     docs_url="/docs",
 )
-
 router = APIRouter(prefix="/logispot", tags=["Logispot"])
 
-# ----------------- 툴 엔드포인트 -----------------
+# ──────────────── 4. Laravel 호출 헬퍼 ────────────────
+def get_api_map() -> dict[str, str]:
+    return {
+        "token_authentication": f"{LARAVEL_API_BASE}/authentication/token",
+        "get_order_list": f"{LARAVEL_API_BASE}/orders/get",
+    }
+
+async def call_laravel(func_name: str, payload: dict[str, Any], use_auth: bool = False) -> dict[str, Any]:
+    """
+    공통 HTTP POST 래퍼
+    """
+    url = get_api_map().get(func_name)
+    if not url:
+        return {"error": "API 경로를 찾을 수 없습니다."}
+
+    headers: dict[str, str] = {}
+    if use_auth and AUTH_TOKEN:
+        headers["Authorization"] = f"Bearer {AUTH_TOKEN}"
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            res = await client.post(url, json=payload, headers=headers)
+            res.raise_for_status()
+            return res.json()
+    except httpx.HTTPStatusError as e:
+        logger.error(
+            "[Laravel 오류] func=%s status=%s body=%s",
+            func_name,
+            e.response.status_code,
+            e.response.text,
+        )
+        return {"error": "Laravel API 호출 실패"}
+    except Exception as e:  # noqa: BLE001
+        logger.error("[네트워크 오류] %s", str(e))
+        return {"error": "서버와 통신 실패"}
+
+# ──────────────── 5. 요청 스키마 ────────────────
 class TokenAuthIn(BaseModel):
     id: str = Field(..., example="driver001")
     password: str = Field(..., example="p@ssw0rd!")
     user_type: int = Field(..., example=1)
-
-@router.post("/token-auth", operation_id="token_authentication")
-async def token_auth_ep(body: TokenAuthIn):
-    from logispot_mcp import token_authentication
-    return await token_authentication(**body.model_dump())
 
 class OrderListIn(BaseModel):
     reference_date: str
@@ -38,44 +95,68 @@ class OrderListIn(BaseModel):
     max_result: int = 20
     version2: bool = True
 
+# ──────────────── 6. FastAPI 엔드포인트(= MCP 툴) ────────────────
+@router.post("/token-auth", operation_id="token_authentication")
+async def token_auth_ep(body: TokenAuthIn):
+    """
+    ✅ 로그인 (JWT 저장)
+    """
+    global AUTH_TOKEN  # pylint: disable=global-statement
+    resp = await call_laravel("token_authentication", body.model_dump())
+    token = resp.get("token") if isinstance(resp, dict) else None
+    if token:
+        AUTH_TOKEN = token
+        return {"message": "로그인 성공!"}
+    return {"error": "로그인 실패", "detail": resp}
+
 @router.post("/order-list", operation_id="get_order_list")
 async def order_list_ep(body: OrderListIn):
-    from logispot_mcp import get_order_list
-    return await get_order_list(**body.model_dump())
+    """
+    ✅ 주문 목록 조회 (토큰 필요)
+    """
+    if not AUTH_TOKEN:
+        return {"error": "인증 토큰이 없습니다. 먼저 /token-auth 호출"}
+
+    resp = await call_laravel("get_order_list", body.model_dump(), use_auth=True)
+    return resp
 
 app.include_router(router)
 
-# ------------- MCP 서버 초기화 & 커스텀 옵션 -------------
-# MCP 서버 래퍼
-mcp_server = FastApiMCP(app)          # <-- FastApiMCP 0.3+ 사용
+# ──────────────── 7. FastApiMCP 래핑 & 마운트 ────────────────
+mcp = FastApiMCP(app)
 
-# 1) 초기화 옵션 객체를 "빈 상태"로 받기
-init_opts = mcp_server.server.create_initialization_options()
+# 시스템 프롬프트 설정
+init_opts = mcp.server.create_initialization_options()
+init_opts.instructions = (
+    "당신은 Logispot 물류 전문 AI 비서입니다. "
+    "모든 답변은 한국어로, 차분하고 친절한 톤으로 작성하세요."
+)
+mcp.server.initialization_options = init_opts
 
-# 2) SDK 버전에 따라 알맞은 필드에 시스템 프롬프트 넣기
-if hasattr(init_opts, "instructions"):        # mcp 1.6+ (권장)
-    init_opts.instructions = (
-        "당신은 Logispot 물류 전문 AI 비서입니다. "
-        "모든 답변은 한국어로, 차분하고 친절한 톤으로 작성하세요."
-    )
-elif hasattr(init_opts, "system_prompt"):     # 구버전(≤1.5)
-    init_opts.system_prompt = (
-        "당신은 Logispot 물류 전문 AI 비서입니다. "
-        "모든 답변은 한국어로, 차분하고 친절한 톤으로 작성하세요."
-    )
-else:
-    raise RuntimeError("SDK가 다시 바뀐 것 같습니다—필드명을 확인하세요!")
+# ✨ mount_path는 키워드 인자로! (오류 수정 포인트)
+mcp.mount(mount_path="/mcp", transport="sse")    # SSE: /mcp/sse, POST: /mcp/messages/
 
-# 3) 수정한 옵션을 서버에 적용
-mcp_server.server.initialization_options = init_opts
-
-# 4) 마운트
-mcp_server.mount(mount_path="/mcp", transport="sse")       # SSE: /mcp/sse, POST: /mcp/messages/
-
-# 헬스체크
+# ──────────────── 8. 헬스체크 ────────────────
 @app.get("/")
 async def root():
     return {"status": "ok"}
+
+# ──────────────── 9. 실행 엔트리포인트 ────────────────
+if __name__ == "__main__":
+    """
+    실행:
+      $ uvicorn app:app --port 8000 --reload
+    """
+    import uvicorn
+
+    uvicorn.run(
+        "app:app",
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", 8000)),
+        log_level="info",
+        reload=True,
+    )
+
 
 # from fastapi import FastAPI, Request
 # from mcp.server.sse import SseServerTransport
