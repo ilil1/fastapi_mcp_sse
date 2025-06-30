@@ -49,10 +49,6 @@ app.include_router(router)
 mcp_server = FastApiMCP(app)
 
 init_opts = mcp_server.server.create_initialization_options()
-init_opts.system_prompt = (
-    "당신은 Logispot 물류 전용 AI 비서입니다. 모든 답변은 한국어로, "
-    "친절하고 차분한 톤으로 작성하세요."
-)
 mcp_server.server.initialization_options = init_opts
 
 mcp_server.mount("/mcp")          # SSE: /mcp/sse, POST: /mcp/messages/
