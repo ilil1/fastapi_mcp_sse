@@ -1,9 +1,10 @@
 startCommand:
-  type: remote
-  url: https://fastapi-mcp-sse.onrender.com/sse   # Render 배포 URL
-  transport: sse                                  # 클라이언트‑→서버 연결 방식
-configSchema:
-  type: object
-  description: "Public demo – no config required"
-  exampleConfig: {}
+  type: http
+  command: python
+  args: ["server.py"]
+  port: 8000
 
+configSchema:               # ← 없어도 동작하지만 UI 경고 제거용
+  type: object
+  description: "Demo – no runtime config required"
+  exampleConfig: {}
