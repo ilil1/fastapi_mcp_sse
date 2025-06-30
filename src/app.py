@@ -25,7 +25,7 @@ mcp_server = FastApiMCP(
     name="FastAPI MCP SSE Demo",
     registry=mcp._mcp_server,   # ✅ 명시적으로 registry 전달
     mount_path="/mcp",
-    base_url="..."
+    base_url=os.getenv("PUBLIC_URL", "https://fastapi-mcp-sse.onrender.com")
 )
 
 mcp_server.mount()               # /mcp , /mcp/sse 라우트 자동 생성
