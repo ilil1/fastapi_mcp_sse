@@ -1,16 +1,7 @@
 runtime: "container"
-build:
-  dockerfile: "Dockerfile"           # Path to your Dockerfile
-  dockerBuildPath: "."               # Docker build context
 startCommand:
   type: "http"
-  configSchema:                      # JSON Schema for configuration
-    type: "object"
-    properties:
-      apiKey:
-        type: "string"
-        description: "Your API key"
-    required: ["apiKey"]
-  exampleConfig:
-    apiKey: "sk-example123"
-
+  configSchema: {}  # 빈 스키마로 설정
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
