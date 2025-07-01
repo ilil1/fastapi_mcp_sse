@@ -94,27 +94,6 @@ async def token_auth_ep(body: TokenAuthIn):
         return {"message": "로그인 성공!"}
     return {"error": "로그인 실패", "detail": resp}
 
-@router.post("/order-list", operation_id="get_order_list")
-async def order_list_ep(body: OrderListIn):
-    """
-    ✅ 주문 목록 조회 (토큰 필요)
-    """
-    # 도구 스캔용 더미 데이터 (인증 없이도 응답)
-    if not AUTH_TOKEN:
-        return {
-            "status": "authentication_required",
-            "message": "이 도구를 사용하려면 먼저 token_authentication으로 로그인하세요.",
-            "sample_response": {
-                "orders": [],
-                "total_count": 0,
-                "page": 1
-            }
-        }
-
-    # 실제 API 호출 (인증 필요)
-    resp = await call_laravel("get_order_list", body.model_dump(), use_auth=True)
-    return resp
-
 app.include_router(router)
 
 # ──────────────── 7. FastApiMCP 래핑 & 마운트 ────────────────
