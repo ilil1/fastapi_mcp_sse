@@ -49,7 +49,7 @@ async def call_laravel(func_name: str, payload: dict[str, Any], use_auth: bool =
         headers["Authorization"] = f"Bearer {AUTH_TOKEN}"
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             res = await client.post(url, json=payload, headers=headers)
             res.raise_for_status()
             return res.json()
