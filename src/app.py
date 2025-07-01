@@ -17,11 +17,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("logispot.mcp")
 
-# ──────────────── 2. 상수 / 전역 변수 ────────────────
+# ──────────────── 2. 상수 ────────────────
 LARAVEL_API_BASE = os.getenv("LARAVEL_API_BASE", "https://api.test-spot.com/api/v1")
-AUTH_TOKEN: str | None = None        # 로그인 성공 시 저장되는 JWT
 
-# ──────────────── 3. FastAPI 앱 & 라우터 ────────────────#
+# ──────────────── 3. FastAPI 앱 & 라우터 ────────────────
 app = FastAPI(
     title="Logispot MCP Demo (FastApiMCP)",
     version="1.0.0",
@@ -36,7 +35,7 @@ def get_api_map() -> dict[str, str]:
         "get_order_list": f"{LARAVEL_API_BASE}/orders/get",
     }
 
-async def call_laravel(func_name: str, payload: dict[str, Any], use_auth: bool = False) -> dict[str, Any]:
+async def call_laravel(func_name: str, payload: dict[str, Any], auth_token: str | None = None) -> dict[str, Any]:
     """
     공통 HTTP POST 래퍼
     """
@@ -45,8 +44,8 @@ async def call_laravel(func_name: str, payload: dict[str, Any], use_auth: bool =
         return {"error": "API 경로를 찾을 수 없습니다."}
 
     headers: dict[str, str] = {}
-    if use_auth and AUTH_TOKEN:
-        headers["Authorization"] = f"Bearer {AUTH_TOKEN}"
+    if auth_token:
+        headers["Authorization"] = f"Bearer {auth_token}"
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -61,7 +60,7 @@ async def call_laravel(func_name: str, payload: dict[str, Any], use_auth: bool =
             e.response.text,
         )
         return {"error": "Laravel API 호출 실패"}
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.error("[네트워크 오류] %s", str(e))
         return {"error": "서버와 통신 실패"}
 
@@ -75,14 +74,12 @@ class TokenAuthIn(BaseModel):
 @router.post("/token-auth", operation_id="token_authentication")
 async def token_auth_ep(body: TokenAuthIn):
     """
-    ✅ 로그인 (JWT 저장)
+    ✅ 로그인 (JWT 반환)
     """
-    global AUTH_TOKEN  # pylint: disable=global-statement
     resp = await call_laravel("token_authentication", body.model_dump())
     token = resp.get("token") if isinstance(resp, dict) else None
     if token:
-        AUTH_TOKEN = token
-        return {"message": "로그인 성공!"}
+        return {"message": "로그인 성공!", "token": token}
     return {"error": "로그인 실패", "detail": resp}
 
 app.include_router(router)
