@@ -26,6 +26,7 @@ app = FastAPI(
     title="Logispot MCP Demo (FastApiMCP)",
     version="1.0.0",
     docs_url="/docs",
+    timeout_keep_alive=30,
 )
 router = APIRouter(prefix="/logispot", tags=["Logispot"])
 
