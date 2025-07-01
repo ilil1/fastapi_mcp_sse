@@ -9,18 +9,6 @@ from pydantic import BaseModel, Field
 from fastapi_mcp import FastApiMCP
 
 # ──────────────── 1. 환경 변수 & 로깅 ────────────────
-import os
-import logging
-from typing import Any
-
-import httpx
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from fastapi_mcp import FastApiMCP
-
-# ──────────────── 1. 환경 변수 & 로깅 ────────────────
 load_dotenv(".env", override=True)
 
 logging.basicConfig(
@@ -29,36 +17,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger("logispot.mcp")
 
-# ──────────────── 2. 전역 상수 및 토큰 ────────────────
+# ──────────────── 2. 상수 / 전역 변수 ────────────────
 LARAVEL_API_BASE = os.getenv("LARAVEL_API_BASE", "https://api.test-spot.com/api/v1")
-AUTH_TOKEN: str | None = None
+AUTH_TOKEN: str | None = None        # 로그인 성공 시 저장되는 JWT
 
-# ──────────────── 3. FastAPI + MCP 초기화 ────────────────
+# ──────────────── 3. FastAPI 앱 & 라우터 ────────────────#
 app = FastAPI(
     title="Logispot MCP Demo (FastApiMCP)",
     version="1.0.0",
     docs_url="/docs",
 )
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # 실제 서비스 시에는 제한 필요
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-mcp = FastApiMCP(app)
-
-# 시스템 프롬프트 설정
-init_opts = mcp.server.create_initialization_options()
-init_opts.instructions = (
-    "당신은 Logispot 물류 전문 AI 비서입니다. "
-    "모든 답변은 한국어로, 차분하고 친절한 톤으로 작성하세요."
-)
-mcp.server.initialization_options = init_opts
-
-mcp.mount(mount_path="/mcp", transport="sse")
+router = APIRouter(prefix="/logispot", tags=["Logispot"])
 
 # ──────────────── 4. Laravel 호출 헬퍼 ────────────────
 def get_api_map() -> dict[str, str]:
@@ -68,6 +37,9 @@ def get_api_map() -> dict[str, str]:
     }
 
 async def call_laravel(func_name: str, payload: dict[str, Any], use_auth: bool = False) -> dict[str, Any]:
+    """
+    공통 HTTP POST 래퍼
+    """
     url = get_api_map().get(func_name)
     if not url:
         return {"error": "API 경로를 찾을 수 없습니다."}
@@ -89,41 +61,80 @@ async def call_laravel(func_name: str, payload: dict[str, Any], use_auth: bool =
             e.response.text,
         )
         return {"error": "Laravel API 호출 실패"}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error("[네트워크 오류] %s", str(e))
         return {"error": "서버와 통신 실패"}
 
-# ──────────────── 5. 요청 모델 ────────────────
+# ──────────────── 5. 요청 스키마 ────────────────
 class TokenAuthIn(BaseModel):
     id: str = Field(..., example="driver001")
     password: str = Field(..., example="p@ssw0rd!")
     user_type: int = Field(..., example=1)
 
-# ──────────────── 6. FastAPI 엔드포인트 (= MCP 툴) ────────────────
-@app.post("/logispot/token-auth", operation_id="token_authentication", tags=["Logispot"])
+class OrderListIn(BaseModel):
+    reference_date: str
+    is_driver_management: bool
+    start_date: str
+    end_date: str
+    page: int = 1
+    max_result: int = 20
+    version2: bool = True
+
+# ──────────────── 6. FastAPI 엔드포인트(= MCP 툴) ────────────────
+@router.post("/token-auth", operation_id="token_authentication")
 async def token_auth_ep(body: TokenAuthIn):
     """
     ✅ 로그인 (JWT 저장)
     """
-    global AUTH_TOKEN
+    global AUTH_TOKEN  # pylint: disable=global-statement
     resp = await call_laravel("token_authentication", body.model_dump())
     token = resp.get("token") if isinstance(resp, dict) else None
     if token:
         AUTH_TOKEN = token
-        return {"message": "로그인 성공!", "token": token}
+        return {"message": "로그인 성공!"}
     return {"error": "로그인 실패", "detail": resp}
 
-# ──────────────── 7. 사용자 정의 MCP 도구 ────────────────
-@mcp.tool()
-async def get_token_status() -> str:
-    """현재 저장된 AUTH_TOKEN 상태를 알려줍니다."""
-    return AUTH_TOKEN or "토큰이 없습니다."
+@router.post("/order-list", operation_id="get_order_list")
+async def order_list_ep(body: OrderListIn):
+    """
+    ✅ 주문 목록 조회 (토큰 필요)
+    """
+    # 도구 스캔용 더미 데이터 (인증 없이도 응답)
+    if not AUTH_TOKEN:
+        return {
+            "status": "authentication_required",
+            "message": "이 도구를 사용하려면 먼저 token_authentication으로 로그인하세요.",
+            "sample_response": {
+                "orders": [],
+                "total_count": 0,
+                "page": 1
+            }
+        }
+
+    # 실제 API 호출 (인증 필요)
+    resp = await call_laravel("get_order_list", body.model_dump(), use_auth=True)
+    return resp
+
+app.include_router(router)
+
+# ──────────────── 7. FastApiMCP 래핑 & 마운트 ────────────────
+mcp = FastApiMCP(app)
+
+# 시스템 프롬프트 설정
+init_opts = mcp.server.create_initialization_options()
+init_opts.instructions = (
+    "당신은 Logispot 물류 전문 AI 비서입니다. "
+    "모든 답변은 한국어로, 차분하고 친절한 톤으로 작성하세요."
+)
+mcp.server.initialization_options = init_opts
+
+# ✨ mount_path는 키워드 인자로! (오류 수정 포인트)
+mcp.mount(mount_path="/mcp", transport="sse")    # SSE: /mcp/sse, POST: /mcp/messages/
 
 # ──────────────── 8. 헬스체크 ────────────────
-@app.get("/", tags=["Health"])
+@app.get("/")
 async def root():
     return {"status": "ok"}
-
 
 # from fastapi import FastAPI, Request
 # from mcp.server.sse import SseServerTransport
