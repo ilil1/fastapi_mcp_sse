@@ -21,7 +21,7 @@ logger = logging.getLogger("logispot.mcp")
 LARAVEL_API_BASE = os.getenv("LARAVEL_API_BASE", "https://api.test-spot.com/api/v1")
 AUTH_TOKEN: str | None = None        # 로그인 성공 시 저장되는 JWT
 
-# ──────────────── 3. FastAPI 앱 & 라우터 ────────────────
+# ──────────────── 3. FastAPI 앱 & 라우터 ────────────────#
 app = FastAPI(
     title="Logispot MCP Demo (FastApiMCP)",
     version="1.0.0",
