@@ -136,23 +136,6 @@ mcp.mount(mount_path="/mcp", transport="sse")    # SSE: /mcp/sse, POST: /mcp/mes
 async def root():
     return {"status": "ok"}
 
-from fastapi_mcp import Tool
-
-@app.get("/mcp/tools")
-async def get_tools():
-    return [
-        Tool(
-            name="token_authentication",
-            description="로그인하여 JWT 토큰을 발급받습니다.",
-            parameters=TokenAuthIn.schema(),
-        ),
-        Tool(
-            name="get_order_list",
-            description="주문 목록을 조회합니다.",
-            parameters=OrderListIn.schema(),
-        ),
-    ]
-
 # from fastapi import FastAPI, Request
 # from mcp.server.sse import SseServerTransport
 # from starlette.routing import Mount
