@@ -127,20 +127,20 @@ async def root():
     return {"status": "ok"}
 
 # ──────────────── 9. 실행 엔트리포인트 ────────────────
-if __name__ == "__main__":
-    """
-    실행:
-      $ uvicorn app:app --port 8000 --reload
-    """
-    import uvicorn
-
-    uvicorn.run(
-        "app:app",
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", 8000)),
-        log_level="info",
-        reload=True,
-    )
+# if __name__ == "__main__":
+#     """
+#     실행:
+#       $ uvicorn app:app --port 8000 --reload
+#     """
+#     import uvicorn
+#
+#     uvicorn.run(
+#         "app:app",
+#         host="0.0.0.0",
+#         port=int(os.getenv("PORT", 8000)),
+#         log_level="info",
+#         reload=True,
+#     )
 
 
 # from fastapi import FastAPI, Request
