@@ -49,7 +49,7 @@ async def call_laravel(func_name: str, payload: dict[str, Any], use_auth: bool =
         headers["Authorization"] = f"Bearer {AUTH_TOKEN}"
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             res = await client.post(url, json=payload, headers=headers)
             res.raise_for_status()
             return res.json()
@@ -135,6 +135,23 @@ mcp.mount(mount_path="/mcp", transport="sse")    # SSE: /mcp/sse, POST: /mcp/mes
 @app.get("/")
 async def root():
     return {"status": "ok"}
+
+from fastapi_mcp import Tool
+
+@app.get("/mcp/tools")
+async def get_tools():
+    return [
+        Tool(
+            name="token_authentication",
+            description="로그인하여 JWT 토큰을 발급받습니다.",
+            parameters=TokenAuthIn.schema(),
+        ),
+        Tool(
+            name="get_order_list",
+            description="주문 목록을 조회합니다.",
+            parameters=OrderListIn.schema(),
+        ),
+    ]
 
 # from fastapi import FastAPI, Request
 # from mcp.server.sse import SseServerTransport
