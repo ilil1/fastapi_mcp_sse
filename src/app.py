@@ -3,14 +3,11 @@ import logging
 from typing import Any
 
 import httpx
-from dotenv import load_dotenv
 from fastapi import FastAPI, APIRouter
 from pydantic import BaseModel, Field
 from fastapi_mcp import FastApiMCP
 
 # ──────────────── 1. 환경 변수 & 로깅 ────────────────
-load_dotenv(".env", override=True)
-
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
