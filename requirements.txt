@@ -2,5 +2,5 @@ fastapi==0.115.14
 fastapi-mcp==0.3.*
 uvicorn[standard]~=0.35.0
 httpx>=0.28.0          # logispot_mcp 가 비동기 POST 호출에 사용
-
+anyio>=3.7.0
 pydantic~=2.11.7
