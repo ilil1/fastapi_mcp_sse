@@ -119,29 +119,14 @@ init_opts.instructions = (
 mcp.server.initialization_options = init_opts
 
 # ✨ mount_path는 키워드 인자로! (오류 수정 포인트)
-mcp.mount(mount_path="/mcp", transport="sse")    # SSE: /mcp/sse, POST: /mcp/messages/
-
+# mcp.mount(mount_path="/mcp", transport="sse")    # SSE: /mcp/sse, POST: /mcp/messages/
+# ② 두 가지 모두 열고 싶다면
+mcp.mount(mount_path="/mcp",
+          transport=["streamable-http", "sse"])
 # ──────────────── 8. 헬스체크 ────────────────
 @app.get("/")
 async def root():
     return {"status": "ok"}
-
-# ──────────────── 9. 실행 엔트리포인트 ────────────────
-# if __name__ == "__main__":
-#     """
-#     실행:
-#       $ uvicorn app:app --port 8000 --reload
-#     """
-#     import uvicorn
-#
-#     uvicorn.run(
-#         "app:app",
-#         host="0.0.0.0",
-#         port=int(os.getenv("PORT", 8000)),
-#         log_level="info",
-#         reload=True,
-#     )
-
 
 # from fastapi import FastAPI, Request
 # from mcp.server.sse import SseServerTransport
