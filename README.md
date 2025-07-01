@@ -1,4 +1,5 @@
 # FastAPI MCP SSE
+[![smithery badge](https://smithery.ai/badge/@ilil1/fastapi_mcp_sse)](https://smithery.ai/server/@ilil1/fastapi_mcp_sse)
 
 <p align="center">
   <strong>English</strong> | <a href="/README.zh-CN.md">简体中文</a>
@@ -38,6 +39,14 @@ This project showcases a modular architecture that:
 3. Demonstrates how to maintain separation between MCP functionality and web routes
 
 ## Installation & Usage Options
+
+### Installing via Smithery
+
+To install FastAPI SSE MCP Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@ilil1/fastapi_mcp_sse):
+
+```bash
+npx -y @smithery/cli install @ilil1/fastapi_mcp_sse --client claude
+```
 
 ### Prerequisites
 
