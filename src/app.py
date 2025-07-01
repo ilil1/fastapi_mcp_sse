@@ -19,15 +19,15 @@ logger = logging.getLogger("logispot.mcp")
 
 # ──────────────── 2. 상수 / 전역 변수 ────────────────
 LARAVEL_API_BASE = os.getenv("LARAVEL_API_BASE", "https://api.test-spot.com/api/v1")
-AUTH_TOKEN: str | None = None
+AUTH_TOKEN: str | None = None        # 로그인 성공 시 저장되는 JWT
 
-# ──────────────── 3. FastAPI 앱 ────────────────
+# ──────────────── 3. FastAPI 앱 & 라우터 ────────────────#
 app = FastAPI(
     title="Logispot MCP Demo (FastApiMCP)",
     version="1.0.0",
     docs_url="/docs",
 )
-
+router = APIRouter(prefix="/logispot", tags=["Logispot"])
 
 # ──────────────── 4. Laravel 호출 헬퍼 ────────────────
 def get_api_map() -> dict[str, str]:
@@ -36,9 +36,10 @@ def get_api_map() -> dict[str, str]:
         "get_order_list": f"{LARAVEL_API_BASE}/orders/get",
     }
 
-
 async def call_laravel(func_name: str, payload: dict[str, Any], use_auth: bool = False) -> dict[str, Any]:
-    """공통 HTTP POST 래퍼"""
+    """
+    공통 HTTP POST 래퍼
+    """
     url = get_api_map().get(func_name)
     if not url:
         return {"error": "API 경로를 찾을 수 없습니다."}
@@ -48,19 +49,75 @@ async def call_laravel(func_name: str, payload: dict[str, Any], use_auth: bool =
         headers["Authorization"] = f"Bearer {AUTH_TOKEN}"
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:  # 타임아웃 단축
+        async with httpx.AsyncClient(timeout=10.0) as client:
             res = await client.post(url, json=payload, headers=headers)
             res.raise_for_status()
             return res.json()
     except httpx.HTTPStatusError as e:
-        logger.error("[Laravel 오류] func=%s status=%s", func_name, e.response.status_code)
+        logger.error(
+            "[Laravel 오류] func=%s status=%s body=%s",
+            func_name,
+            e.response.status_code,
+            e.response.text,
+        )
         return {"error": "Laravel API 호출 실패"}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error("[네트워크 오류] %s", str(e))
         return {"error": "서버와 통신 실패"}
 
+# ──────────────── 5. 요청 스키마 ────────────────
+class TokenAuthIn(BaseModel):
+    id: str = Field(..., example="driver001")
+    password: str = Field(..., example="p@ssw0rd!")
+    user_type: int = Field(..., example=1)
 
-# ──────────────── 5. MCP 서버 설정 ────────────────
+class OrderListIn(BaseModel):
+    reference_date: str
+    is_driver_management: bool
+    start_date: str
+    end_date: str
+    page: int = 1
+    max_result: int = 20
+    version2: bool = True
+
+# ──────────────── 6. FastAPI 엔드포인트(= MCP 툴) ────────────────
+@router.post("/token-auth", operation_id="token_authentication")
+async def token_auth_ep(body: TokenAuthIn):
+    """
+    ✅ 로그인 (JWT 저장)
+    """
+    global AUTH_TOKEN  # pylint: disable=global-statement
+    resp = await call_laravel("token_authentication", body.model_dump())
+    token = resp.get("token") if isinstance(resp, dict) else None
+    if token:
+        AUTH_TOKEN = token
+        return {"message": "로그인 성공!"}
+    return {"error": "로그인 실패", "detail": resp}
+
+@router.post("/order-list", operation_id="get_order_list")
+async def order_list_ep(body: OrderListIn):
+    """
+    ✅ 주문 목록 조회 (토큰 필요)
+    """
+    # 도구 스캔용 더미 데이터 (인증 없이도 응답)
+    if not AUTH_TOKEN:
+        return {
+            "status": "authentication_required",
+            "message": "이 도구를 사용하려면 먼저 token_authentication으로 로그인하세요.",
+            "sample_response": {
+                "orders": [],
+                "total_count": 0,
+                "page": 1
+            }
+        }
+
+    # 실제 API 호출 (인증 필요)
+    resp = await call_laravel("get_order_list", body.model_dump(), use_auth=True)
+    return resp
+
+app.include_router(router)
+
+# ──────────────── 7. FastApiMCP 래핑 & 마운트 ────────────────
 mcp = FastApiMCP(app)
 
 # 시스템 프롬프트 설정
@@ -71,69 +128,8 @@ init_opts.instructions = (
 )
 mcp.server.initialization_options = init_opts
 
-
-# ──────────────── 6. MCP 도구 직접 등록 ────────────────
-@mcp.tool()
-async def token_authentication(
-        id: str = Field(..., description="사용자 ID", example="driver001"),
-        password: str = Field(..., description="비밀번호", example="p@ssw0rd!"),
-        user_type: int = Field(..., description="사용자 타입", example=1)
-) -> dict[str, Any]:
-    """✅ 로그인 (JWT 저장)"""
-    global AUTH_TOKEN
-
-    payload = {"id": id, "password": password, "user_type": user_type}
-    resp = await call_laravel("token_authentication", payload)
-
-    token = resp.get("token") if isinstance(resp, dict) else None
-    if token:
-        AUTH_TOKEN = token
-        return {"message": "로그인 성공!"}
-    return {"error": "로그인 실패", "detail": resp}
-
-
-@mcp.tool()
-async def get_order_list(
-        reference_date: str = Field(..., description="기준 날짜"),
-        is_driver_management: bool = Field(..., description="드라이버 관리 여부"),
-        start_date: str = Field(..., description="시작 날짜"),
-        end_date: str = Field(..., description="종료 날짜"),
-        page: int = Field(1, description="페이지 번호"),
-        max_result: int = Field(20, description="최대 결과 수"),
-        version2: bool = Field(True, description="버전2 사용 여부")
-) -> dict[str, Any]:
-    """✅ 주문 목록 조회 (토큰 필요)"""
-
-    # 🔥 핵심: 인증 없이도 응답 (도구 스캔용)
-    if not AUTH_TOKEN:
-        return {
-            "status": "authentication_required",
-            "message": "이 도구를 사용하려면 먼저 token_authentication으로 로그인하세요.",
-            "sample_response": {
-                "orders": [],
-                "total_count": 0,
-                "page": page
-            }
-        }
-
-    # 실제 API 호출
-    payload = {
-        "reference_date": reference_date,
-        "is_driver_management": is_driver_management,
-        "start_date": start_date,
-        "end_date": end_date,
-        "page": page,
-        "max_result": max_result,
-        "version2": version2
-    }
-
-    resp = await call_laravel("get_order_list", payload, use_auth=True)
-    return resp
-
-
-# ──────────────── 7. MCP 마운트 ────────────────
-mcp.mount(mount_path="/mcp", transport="sse")
-
+# ✨ mount_path는 키워드 인자로! (오류 수정 포인트)
+mcp.mount(mount_path="/mcp", transport="sse")    # SSE: /mcp/sse, POST: /mcp/messages/
 
 # ──────────────── 8. 헬스체크 ────────────────
 @app.get("/")
