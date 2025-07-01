@@ -1,18 +1,3 @@
-# src/app.py
-import os, logging
-from fastapi import FastAPI, APIRouter
-from pydantic import BaseModel, Field
-from fastapi_mcp import FastApiMCP
-
-# ────────────────────────────────────────────────────────────
-# app.py  ―  Logispot MCP Demo (FastApiMCP 버전)
-# Python 3.10+ /  pip install fastapi fastapi-mcp httpx python-dotenv uvicorn
-# ────────────────────────────────────────────────────────────
-# ────────────────────────────────────────────────────────────
-# app.py  ―  Logispot MCP Demo (FastApiMCP 버전)
-# Python 3.10+ /  pip install fastapi fastapi-mcp httpx python-dotenv uvicorn
-# ────────────────────────────────────────────────────────────
-
 import os
 import logging
 from typing import Any
