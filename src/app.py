@@ -129,8 +129,8 @@ init_opts.instructions = (
 mcp.server.initialization_options = init_opts
 
 # ✨ mount_path는 키워드 인자로! (오류 수정 포인트)
-#mcp.mount(mount_path="/mcp", transport="sse")    # SSE: /mcp/sse, POST: /mcp/messages/
-mcp.mount(mount_path="/mcp", transport="streamable-http")
+mcp.mount(mount_path="/mcp", transport="sse")    # SSE: /mcp/sse, POST: /mcp/messages/
+
 # ──────────────── 8. 헬스체크 ────────────────
 @app.get("/")
 async def root():
