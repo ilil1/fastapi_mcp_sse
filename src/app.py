@@ -139,14 +139,6 @@ mcp.mount(mount_path="/mcp",
 async def root():
     return {"status": "ok"}
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
-
-@app.get("/mcp/health")  # MCP 전용 헬스체크
-async def mcp_health():
-    return {"status": "mcp_ready", "tools_available": 2}
-
 # from fastapi import FastAPI, Request
 # from mcp.server.sse import SseServerTransport
 # from starlette.routing import Mount
