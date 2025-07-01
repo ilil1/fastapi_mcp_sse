@@ -2,7 +2,7 @@ FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH="/app/src"          # ⭐ src 레이아웃 경로 추가
+    PYTHONPATH="/app/src"
 
 WORKDIR /app
 
