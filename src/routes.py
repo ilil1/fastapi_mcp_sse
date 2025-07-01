@@ -4,8 +4,6 @@ from app import app
 
 # Create a router with a general tag for API documentation organization
 router = APIRouter(tags=["General"])
-
-
 @router.get("/")
 async def homepage():
     """Root endpoint that returns a simple HTML welcome page"""
