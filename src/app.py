@@ -100,15 +100,19 @@ async def order_list_ep(body: OrderListIn):
     """
     ✅ 주문 목록 조회 (토큰 필요)
     """
-    # 🔥 핵심 수정: 도구 스캔 시에는 인증 체크를 건너뛰기
+    # 도구 스캔용 더미 데이터 (인증 없이도 응답)
     if not AUTH_TOKEN:
-        # Smithery 도구 스캔을 위한 더미 응답
         return {
-            "message": "인증이 필요한 도구입니다. 먼저 token_authentication을 호출하세요.",
-            "requires_auth": True,
-            "available_after_auth": True
+            "status": "authentication_required",
+            "message": "이 도구를 사용하려면 먼저 token_authentication으로 로그인하세요.",
+            "sample_response": {
+                "orders": [],
+                "total_count": 0,
+                "page": 1
+            }
         }
 
+    # 실제 API 호출 (인증 필요)
     resp = await call_laravel("get_order_list", body.model_dump(), use_auth=True)
     return resp
 
@@ -134,6 +138,14 @@ mcp.mount(mount_path="/mcp",
 @app.get("/")
 async def root():
     return {"status": "ok"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+@app.get("/mcp/health")  # MCP 전용 헬스체크
+async def mcp_health():
+    return {"status": "mcp_ready", "tools_available": 2}
 
 # from fastapi import FastAPI, Request
 # from mcp.server.sse import SseServerTransport
