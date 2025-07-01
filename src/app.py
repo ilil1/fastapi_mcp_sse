@@ -71,15 +71,6 @@ class TokenAuthIn(BaseModel):
     password: str = Field(..., example="p@ssw0rd!")
     user_type: int = Field(..., example=1)
 
-class OrderListIn(BaseModel):
-    reference_date: str
-    is_driver_management: bool
-    start_date: str
-    end_date: str
-    page: int = 1
-    max_result: int = 20
-    version2: bool = True
-
 # ──────────────── 6. FastAPI 엔드포인트(= MCP 툴) ────────────────
 @router.post("/token-auth", operation_id="token_authentication")
 async def token_auth_ep(body: TokenAuthIn):
