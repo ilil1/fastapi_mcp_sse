@@ -100,8 +100,14 @@ async def order_list_ep(body: OrderListIn):
     """
     ✅ 주문 목록 조회 (토큰 필요)
     """
+    # 🔥 핵심 수정: 도구 스캔 시에는 인증 체크를 건너뛰기
     if not AUTH_TOKEN:
-        return {"error": "인증 토큰이 없습니다. 먼저 /token-auth 호출"}
+        # Smithery 도구 스캔을 위한 더미 응답
+        return {
+            "message": "인증이 필요한 도구입니다. 먼저 token_authentication을 호출하세요.",
+            "requires_auth": True,
+            "available_after_auth": True
+        }
 
     resp = await call_laravel("get_order_list", body.model_dump(), use_auth=True)
     return resp
